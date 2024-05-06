@@ -15,10 +15,11 @@ from src.utils.dataset import train_ds
 from src.model.gpt2 import GPT2
 from src.utils.tokenizer import tokenize, tokenizer
 
+from train import save_checkpoint, load_checkpoint
+
 
 if __name__ == "__main__":
-    print(tokenizer("!"))
-
+    epoch_to_start_from = 0
     dataloader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=False, collate_fn=tokenize)
     model = GPT2(
         vocabulary_size=VOCAB_SIZE,
@@ -30,18 +31,19 @@ if __name__ == "__main__":
         num_heads=NUM_HEADS,
         num_decoders=NUM_DECODERS
     ).to(DEVICE)
-
-    # print(model)
+    if epoch_to_start_from > 0:
+        load_checkpoint(model, epoch=epoch_to_start_from)
+    print(model)
 
     for batch in dataloader:
-        print()
+        print(batch)
         for i, sentence in enumerate(batch['input_ids'].to("cpu")):
             print(f"Sentence {i}:", tokenizer.decode(sentence))
 
-        logits = model(batch)
-        probas = F.softmax(logits, dim=1)
-        print(probas)
-        token = torch.argmax(probas, dim=1)  # generalize to top_k
+        logits = model(batch, 0)
+        probs = F.softmax(logits, dim=1)
+        print(probs)
+        token = torch.argmax(probs, dim=1)  # generalize to top_k
 
         for i, single_token in enumerate(token.to("cpu")):
             print(f"Token {i}:", tokenizer.decode(single_token))

@@ -51,14 +51,20 @@ class GPT2(nn.Module):
         ])
 
 
-    def forward(self, x, *args):
+    def forward(self, x, i):
+        """
+        does a forward pass on the network
+        :param x: input tensor
+        :param i: index of the token to predict
+        :return:
+        """
         x = self.embedding(x)
         x = self.pos_encoder(x)
         for decoder in self.decoders:
             x = decoder(x)
 
         # get only "next" token
-        x = x.select(dim=1, index=-1)
+        x = x.select(dim=1, index=i)
 
         # get each token probability
         x = torch.matmul(x, self.embedding.token_embeddings.T)
