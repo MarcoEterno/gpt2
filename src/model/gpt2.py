@@ -6,6 +6,7 @@ from src.model.decoder import Decoder
 from src.model.embedding import Embedding
 from src.model.pos_encoder import PositionalEncoder
 
+#TODO: implement MoE and MoD
 
 class GPT2(nn.Module):
     def __init__(

@@ -4,6 +4,7 @@ from torch.nn import functional as F
 
 
 class Decoder(nn.Module):
+    # TODO: IMPLEMENT GQA, MQA.
     def __init__(
             self,
             embedding_size: int,

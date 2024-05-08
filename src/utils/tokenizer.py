@@ -7,8 +7,6 @@ from src.config import CONTEXT_LENGTH
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 tokenizer.pad_token = tokenizer.eos_token
 
-VOCABULARY_SIZE = tokenizer.vocab_size
-
 
 def tokenize(batch):
     tokens = tokenizer(
