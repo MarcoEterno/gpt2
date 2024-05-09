@@ -1,18 +1,15 @@
 import logging
-import os
 import time
 from datetime import datetime
-from typing import Optional
-
 
 import torch
-from torch import optim, load, save
+from torch import optim
 from torch.nn import functional as F
-from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import LambdaLR
+
 from torch.utils.tensorboard import SummaryWriter
 
 from src.config import BATCH_SIZE
-from src.config import CHECKPOINTS_DIR
 from src.config import CONTEXT_LENGTH
 from src.config import DEVICE
 from src.config import EMBEDDING_SIZE
@@ -24,121 +21,19 @@ from src.config import SAVE_CHECKPOINT_EVERY_N_MINUTES
 from src.config import TRAIN_NUM_EPOCHS
 from src.config import VOCAB_SIZE
 from src.model.gpt2 import GPT2
-from src.utils.dataset import train_dataloader, validation_dataloader
-from src.utils.tokenizer import tokenize, tokenizer
-
+from src.dataloader import train_dataloader, validation_dataloader
+from src.model.tokenizer import tokenizer
+from src.checkpoint_management import load_model, save_model
+# TODO: check generation probabilities after softmax with debugger, check if logging is done right,
+# TODO: study batch size influence,
 
 def lr_rate(step_num, d_model, factor, warmup_steps):
-    step_num = max(1, step_num)
-    return factor * (
-            d_model ** (-0.5) * min(step_num ** (-0.5), step_num * warmup_steps ** (-1.5))
-    )
-
-
-def load_model(
-        model: GPT2,
-        start_epoch: int = 0,
-        batch_number: int = 0,
-        checkpoints_dir: Optional[str] = CHECKPOINTS_DIR
-):
-    """
-    If resuming training, this function loads the state of the model and optimizer.
-
-    Args:
-        model (GPT2): The model into which the state is loaded.
-        start_epoch (int, optional): If set to n, the model is loaded from the n-th epoch. Defaults to 0.
-        batch_number (int, optional): If set to n, the model is loaded from the n-th batch. Defaults to 0.
-        checkpoints_dir (str, optional): The directory where the checkpoints are stored. Defaults to CHECKPOINTS_DIR.
-
-    Returns:
-        GPT2: The initialized model.
-        torch.optim.Adam: The optimizer with the state loaded.
-        int: The epoch from which the model was initialized.
-        int: The first batch of data that the model has not seen yet.
-    """
-    # initialize the optimizer to load if no checkpoint is found
-    initial_optimizer = optim.Adam(model.parameters(), betas=(0.9, 0.98), eps=1e-9, weight_decay=0.01)
-    if not os.path.exists(checkpoints_dir):
-        logging.log(logging.INFO,
-                    f"Checkpoints directory not found, creating it, and loading the model randomly initialized")
-        os.mkdir(checkpoints_dir)
-        return model, initial_optimizer,0, 0
-    if os.path.exists(checkpoints_dir):
-        # find the last checkpoint that we saved and load it
-        for epoch in range(start_epoch, 0, -1):
-            for batch in range(start_batch_number, 0, -1):
-                tentative_last_checkpoint_path = os.path.join(checkpoints_dir,
-                                                              f"ckpt_"
-                                                              f"{epoch}_"
-                                                              f"{batch}_"
-                                                              f"{CONTEXT_LENGTH}_"
-                                                              f"{VOCAB_SIZE}_"
-                                                              f"{EMBEDDING_SIZE}_"
-                                                              f"{NUM_DECODERS}_"
-                                                              f"{NUM_HEADS}.pt"
-                                                              )
-                if os.path.exists(tentative_last_checkpoint_path):
-                    logging.log(logging.INFO, f"Loading the model from {tentative_last_checkpoint_path}")
-                    checkpoint = load(tentative_last_checkpoint_path)
-                    model.load_state_dict(checkpoint['model_state_dict'])
-                    optimizer = model.load_state_dict(checkpoint['optimizer_state_dict'])
-
-                    return model, optimizer, start_epoch, batch + 1 # in principle it is possible that the next batch number
-                    # does not exist, and the model was saved right at the end of a training epoch. but this is unlikely
-
-        # if no checkpoints are found, load the model randomly initialized
-        logging.log(logging.INFO, f"No checkpoints found, loading the model randomly initialized")
-        return model, initial_optimizer, 0, 0
-
-
-def save_model(
-        model: GPT2,
-        epoch: int,
-        batch_number: int,
-        loss: float, checkpoints_dir:
-        Optional[str] = CHECKPOINTS_DIR
-):
-    """
-    Save the model to the checkpoints directory.
-    
-    Args:
-        model (GPT2): The model to be saved.
-        epoch (int): The epoch at which the model is saved.
-        batch_number (int): The batch number at which the model is saved.
-        loss (float): The loss at which the model is saved.
-        checkpoints_dir (Optional[str], optional): The directory where the model is saved. Defaults to CHECKPOINTS_DIR.
-    
-    Returns:
-        None
-    """
-    # this function can be made asynchronous in case the model is too large to save in a reasonable time
-    if not os.path.exists(checkpoints_dir):
-        logging.log(logging.INFO, f"Checkpoints directory not found, creating it, and saving the model")
-        os.mkdir(checkpoints_dir)
-    if os.path.exists(checkpoints_dir):
-        checkpoint_path = os.path.join(checkpoints_dir,
-                                       f"ckpt_"
-                                       f"{epoch}_"
-                                       f"{batch}_"
-                                       f"{CONTEXT_LENGTH}_"
-                                       f"{VOCAB_SIZE}_"
-                                       f"{EMBEDDING_SIZE}_"
-                                       f"{NUM_DECODERS}_"
-                                       f"{NUM_HEADS}.pt"
-                                       )
-        logging.log(logging.INFO, f"Saved checkpoint to {checkpoint_path}")
-        save({
-            'epoch': epoch,
-            'batch_number': batch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': model.optimizer.state_dict(),
-            'loss': loss,
-        }, checkpoint_path)
-
+    #step_num = max(1, step_num)
+    return 1 # factor * (d_model ** (-0.5) * min(step_num ** (-0.5), step_num * warmup_steps ** (-1.5))
 
 if __name__ == "__main__":
     start_epoch = 0
-    start_batch_number = 0
+    start_batch_number = 109
     model_parameters = f"_{BATCH_SIZE}_{CONTEXT_LENGTH}_{VOCAB_SIZE}_{EMBEDDING_SIZE}_{NUM_DECODERS}_{NUM_HEADS}"
 
     logdir = "logs/logs" + datetime.now().strftime("%d%m-%H:%M:%S") + str(model_parameters) + "/"
@@ -155,10 +50,14 @@ if __name__ == "__main__":
         num_decoders=NUM_DECODERS
     ).to(DEVICE)
 
+    total_model_parameters = sum(p.numel() for p in model.parameters())
+
     if start_epoch > 0 or start_batch_number > 0:
         model, optimizer, start_epoch, start_batch_number = load_model(model, start_epoch, start_batch_number)
     else:
-        optimizer = optim.Adam(model.parameters(), betas=(0.9, 0.98), eps=1e-9, weight_decay=0.01)
+        optimizer = optim.Adam(model.parameters(), betas=(0.9, 0.95), eps=1e-9, weight_decay=0.001)
+
+    scheduler = LambdaLR(optimizer, lr_lambda=lambda step: lr_rate(step, total_model_parameters, 10e-2, 10))
 
     time_of_last_checkpoint_ns = time.perf_counter_ns()
     logging.log(logging.INFO, f"Starting training")
@@ -177,14 +76,15 @@ if __name__ == "__main__":
                 # forward + backward + optimize
                 outputs = model(inputs, j)
                 one_hot_labels = F.one_hot(labels[:, j], num_classes=VOCAB_SIZE).float()
-                loss = F.cross_entropy(outputs, one_hot_labels)
+                loss = F.cross_entropy(outputs, one_hot_labels) # TODO: if this is wrong it is enough to break the program, so double check
                 loss.backward()
                 optimizer.step()
+                scheduler.step()
 
                 # save a model checkpoint every N minutes
                 time_from_last_checkpoint_ns = time.perf_counter_ns() - time_of_last_checkpoint_ns
                 if time_from_last_checkpoint_ns > 60 * 1e9 * SAVE_CHECKPOINT_EVERY_N_MINUTES:
-                    save_model(model, epoch, i, loss.item())
+                    save_model(model, optimizer, epoch, i, loss.item())
                     time_of_last_checkpoint_ns = time.perf_counter_ns()
                     logging.log(logging.INFO, f"Saved checkpoint at epoch {epoch} and step {i}")
 
@@ -202,23 +102,28 @@ if __name__ == "__main__":
                 # print the output of the model
                 if True:
                     probabilities = F.softmax(outputs, dim=1)
+                    #print(outputs.shape)
+                    #print(outputs)
+                    #print(probabilities[0])
+                    #print(sum(probabilities[0]))
                     logging.log(
                         logging.INFO,
                         f'Sentence:{tokenizer.decode(batch["input_ids"][0][:j])}\n'
                         f'Prediction: {tokenizer.decode(outputs[0].argmax().item())}\n'
                         f'Probability: {probabilities[0].max().item()}\n'  # evaluate whether to print top k guesses
-                                )
+                    )
 
 
                 # log training statistics to tensorboard
-                # writer.add_scalar('Learning rate', optimizer.param_groups[0]['lr'], i)
+                writer.add_scalar('Learning rate', optimizer.param_groups[0]['lr'], i)
                 writer.add_scalar('Loss/train', loss.item(), i)
                 writer.add_scalar('Loss/validation', validation_loss.item(), i)
 
                 running_training_loss += loss.item()
+
             if True:  # print every 5 mini-batches
-                logging.log(logging.INFO, f'[{epoch + 1}, {i + 1:5d}] loss: {running_training_loss / 20:.3f}')
+                logging.log(logging.INFO, f'[{epoch + 1}, {i + 1:5d}] loss: {running_training_loss / BATCH_SIZE:.3f}')
 
     logging.log(logging.INFO, 'Finished Training')
-    save_model(model, epoch, i, loss.item())
+    save_model(model, optimizer, epoch, i, loss.item())
     writer.close()

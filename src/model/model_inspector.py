@@ -1,4 +1,4 @@
-from gpt2 import GPT2
+from src.model.gpt2 import GPT2
 from src.config import *
 
 
@@ -26,7 +26,6 @@ class ModelInspector:
 
 
 if __name__ == "__main__":
-    from gpt2 import GPT2
     model = GPT2(
         vocabulary_size=VOCAB_SIZE,
         embedding_size=EMBEDDING_SIZE,

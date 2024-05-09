@@ -3,7 +3,7 @@ from torch.utils.data import random_split, DataLoader
 from torch import manual_seed
 
 from src.config import BATCH_SIZE
-from src.utils.tokenizer import tokenize
+from src.model.tokenizer import tokenize
 
 # Load the 'train' split
 original_train_ds = load_dataset("wikipedia", '20220301.en', split="train", trust_remote_code=True).with_format("torch")
