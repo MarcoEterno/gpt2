@@ -23,7 +23,7 @@ from src.config import VOCAB_SIZE
 from src.model.gpt2 import GPT2
 from src.dataloader import train_dataloader, validation_dataloader
 from src.model.tokenizer import tokenizer
-from src.checkpoint_management import load_model, save_model
+from src.checkpoint_management import load_model, save_model, load_model_old, save_model_old
 # TODO: check generation probabilities after softmax with debugger, check if logging is done right,
 # TODO: study batch size influence,
 
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     total_model_parameters = sum(p.numel() for p in model.parameters())
 
     if start_epoch > 0 or start_batch_number > 0:
-        model, optimizer, start_epoch, start_batch_number = load_model(model, start_epoch, start_batch_number)
+        model, optimizer, start_epoch, start_batch_number = load_model_old(model, start_epoch, start_batch_number)
     else:
         optimizer = optim.Adam(model.parameters(), betas=(0.9, 0.95), eps=1e-9, weight_decay=0.001)
 
