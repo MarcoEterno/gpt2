@@ -35,7 +35,7 @@ we are satisfied with the size of the dataset and can start training
 
 
 
-![img_2.png](img_2.png)
+![img_2.png](chinchilla_scaling_laws.png)
 
 
 
@@ -47,7 +47,6 @@ This was done for two reasons:
 1)To avoid the shortcomings of building a custom tokenizer from scratch 
 (as can be read in the [GPT2 paper](https://d4mucfpksywv.cloudfront.net/better-language-models/language_models_are_unsupervised_multitask_learners.pdf))
 2)To spend more time focusing on the model architecture and training process
-avoid the shortcomings of building a custom tokenizer from scratch
 
 ### Positional Embedding
 

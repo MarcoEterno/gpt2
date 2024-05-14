@@ -1,13 +1,13 @@
 import torch
 
 # Training parameters
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 TRAIN_NUM_EPOCHS = 3
 SAVE_CHECKPOINT_EVERY_N_MINUTES = 5
 
 # Model parameters
-CONTEXT_LENGTH = 16  # 32
-EMBEDDING_SIZE = 512  # 128. calculated with optimal parameters scaling. gpt2 has 768
+CONTEXT_LENGTH = 32  # 32
+EMBEDDING_SIZE = 256  # 128. calculated with optimal parameters scaling. gpt2 has 768
 POSITIONAL_ENCODING_SCALAR = 10_000
 POSITIONAL_ENCODING_COEFFICIENT = 300
 NUM_HEADS = 8  # 8

@@ -26,14 +26,16 @@ from src.model.tokenizer import tokenizer
 from src.checkpoint_management import load_model, save_model, load_model_old, save_model_old
 # TODO: check generation probabilities after softmax with debugger, check if logging is done right,
 # TODO: study batch size influence,
+# TODO: check positional encoding
+
 
 def lr_rate(step_num, d_model, factor, warmup_steps):
     #step_num = max(1, step_num)
-    return 1 # factor * (d_model ** (-0.5) * min(step_num ** (-0.5), step_num * warmup_steps ** (-1.5))
+    return 1# factor * (d_model ** (-0.5) * min(step_num ** (-0.5), step_num * warmup_steps ** (-1.5))
 
 if __name__ == "__main__":
     start_epoch = 0
-    start_batch_number = 109
+    start_batch_number = 405
     model_parameters = f"_{BATCH_SIZE}_{CONTEXT_LENGTH}_{VOCAB_SIZE}_{EMBEDDING_SIZE}_{NUM_DECODERS}_{NUM_HEADS}"
 
     logdir = "logs/logs" + datetime.now().strftime("%d%m-%H:%M:%S") + str(model_parameters) + "/"
@@ -48,7 +50,7 @@ if __name__ == "__main__":
         batch_size=BATCH_SIZE,
         num_heads=NUM_HEADS,
         num_decoders=NUM_DECODERS
-    ).to(DEVICE)
+    ).to(DEVICE) # TODO: move the model printing inside the model initialization and remove the model inspector
 
     total_model_parameters = sum(p.numel() for p in model.parameters())
 
@@ -66,20 +68,19 @@ if __name__ == "__main__":
         for i, batch in enumerate(train_dataloader, start=start_batch_number):
             inputs = batch
             labels = batch['input_ids']
-            running_training_loss = 0.0
+            batch_loss = torch.tensor(0.0, device=DEVICE)
+            # zero the parameter gradients
+            optimizer.zero_grad()
 
             # loop over all the words in the current batch
             for j in range(CONTEXT_LENGTH):
-                # zero the parameter gradients
-                optimizer.zero_grad()
 
-                # forward + backward + optimize
+
+                # forward + loss calculation
                 outputs = model(inputs, j)
                 one_hot_labels = F.one_hot(labels[:, j], num_classes=VOCAB_SIZE).float()
                 loss = F.cross_entropy(outputs, one_hot_labels) # TODO: if this is wrong it is enough to break the program, so double check
-                loss.backward()
-                optimizer.step()
-                scheduler.step()
+                batch_loss += loss # check if the variable type is right due to gradients
 
                 # save a model checkpoint every N minutes
                 time_from_last_checkpoint_ns = time.perf_counter_ns() - time_of_last_checkpoint_ns
@@ -119,10 +120,15 @@ if __name__ == "__main__":
                 writer.add_scalar('Loss/train', loss.item(), i)
                 writer.add_scalar('Loss/validation', validation_loss.item(), i)
 
-                running_training_loss += loss.item()
+                batch_loss += loss.item()
 
             if True:  # print every 5 mini-batches
-                logging.log(logging.INFO, f'[{epoch + 1}, {i + 1:5d}] loss: {running_training_loss / BATCH_SIZE:.3f}')
+                logging.log(logging.INFO, f'[{epoch + 1}, {i + 1:5d}] loss: {batch_loss.item() / BATCH_SIZE:.3f}')
+
+            # backward+optimize
+            batch_loss.backward()
+            optimizer.step()
+            scheduler.step()
 
     logging.log(logging.INFO, 'Finished Training')
     save_model(model, optimizer, epoch, i, loss.item())

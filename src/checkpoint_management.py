@@ -126,7 +126,7 @@ def load_model_old(
     Args:
         model (GPT2): The model into which the state is loaded.
         start_epoch (int, optional): If set to n, the model is loaded from the n-th epoch. Defaults to 0.
-        batch_number (int, optional): If set to n, the model is loaded from the n-th batch. Defaults to 0.
+        start_batch_number (int, optional): If set to n, the model is loaded from the n-th batch. Defaults to 0.
         checkpoints_dir (str, optional): The directory where the checkpoints are stored. Defaults to CHECKPOINTS_DIR.
 
     Returns:
@@ -136,13 +136,30 @@ def load_model_old(
         int: The first batch of data that the model has not seen yet.
     """
     # initialize the optimizer to load if no checkpoint is found
-    initial_optimizer = optim.Adam(model.parameters(), betas=(0.9, 0.98), eps=1e-9, weight_decay=0.01)
-    if not os.path.exists(checkpoints_dir):
+    #initial_optimizer = optim.Adam(model.parameters(), betas=(0.9, 0.98), eps=1e-9, weight_decay=0.01)
+    checkpoint_path = os.path.join(checkpoints_dir,
+                                   f"ckpt_"
+                                   f"{start_epoch}_"
+                                   f"{start_batch_number}_"
+                                   f"{CONTEXT_LENGTH}_"
+                                   f"{VOCAB_SIZE}_"
+                                   f"{EMBEDDING_SIZE}_"
+                                   f"{NUM_DECODERS}_"
+                                   f"{NUM_HEADS}.pt"
+                                   )
+    # forcing the directory to exist
+    logging.log(logging.INFO, f"Loading the model from {checkpoint_path}")
+    checkpoint = load(checkpoint_path)
+    model = model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer = optim.Adam(model.parameters())
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    return model, initial_optimizer, start_epoch, start_batch_number
+    if not os.path.exists(checkpoint_path):
         logging.log(logging.INFO,
                     f"Checkpoints directory not found, creating it, and loading the model randomly initialized")
         os.mkdir(checkpoints_dir)
         return model, initial_optimizer, 0, 0
-    if os.path.exists(checkpoints_dir):
+    if os.path.exists(checkpoint_path): #logic is flawed, this should check if the directory exists and find the last available checkpoint
         # find the last checkpoint that we saved and load it
         for epoch in range(start_epoch, 0, -1):
             for batch in range(start_batch_number, 0, -1):
