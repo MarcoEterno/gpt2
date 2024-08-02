@@ -71,3 +71,19 @@ class GPT2(nn.Module):
         x = torch.matmul(x, self.embedding.token_embeddings.T)
 
         return x
+
+if __name__ == "__main__":
+
+    model = GPT2(
+        vocabulary_size=50257,
+        embedding_size=768,
+        context_length=1024,
+        positional_encoding_scalar=10000,
+        positional_encoding_coefficient=10000,
+        batch_size=1,
+        num_heads=12,
+        num_decoders=12
+    ).to(DEVICE)
+
+    print(f"{sum(p.numel() for p in model.parameters()):,}")
+

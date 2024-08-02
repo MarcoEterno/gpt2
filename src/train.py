@@ -35,7 +35,7 @@ def lr_rate(step_num, d_model, factor, warmup_steps):
 
 if __name__ == "__main__":
     start_epoch = 0
-    start_batch_number = 405
+    start_batch_number = 0
     model_parameters = f"_{BATCH_SIZE}_{CONTEXT_LENGTH}_{VOCAB_SIZE}_{EMBEDDING_SIZE}_{NUM_DECODERS}_{NUM_HEADS}"
 
     logdir = "logs/logs" + datetime.now().strftime("%d%m-%H:%M:%S") + str(model_parameters) + "/"
@@ -79,8 +79,8 @@ if __name__ == "__main__":
                 # forward + loss calculation
                 outputs = model(inputs, j)
                 one_hot_labels = F.one_hot(labels[:, j], num_classes=VOCAB_SIZE).float()
-                loss = F.cross_entropy(outputs, one_hot_labels) # TODO: if this is wrong it is enough to break the program, so double check
-                batch_loss += loss # check if the variable type is right due to gradients
+                loss = F.cross_entropy(outputs, one_hot_labels)
+                batch_loss += loss
 
                 # save a model checkpoint every N minutes
                 time_from_last_checkpoint_ns = time.perf_counter_ns() - time_of_last_checkpoint_ns
